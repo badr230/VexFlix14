@@ -11,10 +11,10 @@
 4. من القايمة اختار **1** (تجربة من غير نشر)، وبعدها **2** (جدولة).
 5. سيب نافذة **3** (المتابعة) شغالة لو عايز الإخفاء والإظهار.
 
-على ماك/لينكس: `pip install -r requirements.txt` وسطّب ffmpeg، وبعدها `python main.py --setup`.
+عdevelopers.facebook.comلى ماك/لينكس: `pip install -r requirements.txt` وسطّب ffmpeg، وبعدها `python main.py --setup`.
 
 ### إزاي تجيب App ID و Token (مرة واحدة)
-1. ادخل developers.facebook.com واعمل تطبيق نوع Business.
+1. ادخل  واعمل تطبيق نوع Business.
 2. من Graph API Explorer اختار تطبيقك واطلب الصلاحيات: `pages_show_list` و `pages_read_engagement` و `pages_manage_posts`، واختار صفحتك، واضغط Generate Access Token.
 3. الـ App ID والـ App Secret هتلاقيهم في Settings ← Basic. المعالج هو اللي بيطلب منك الباقي.
 
