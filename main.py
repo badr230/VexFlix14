@@ -235,7 +235,7 @@ if (
     data = _extract_json(raw)
          
          
-     return data["text"].strip(), data["caption"].strip()
+    return data["text"].strip(), data["caption"].strip()
 
 
 def generate_text(cfg, theme, recent, kind="image"):
