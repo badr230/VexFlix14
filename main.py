@@ -194,24 +194,19 @@ def _generate_once(cfg, theme, recent, kind="image"):
 
         model = _GEMINI_MODEL.get("m") or cfg["gemini_model"]
         r = call(model)
-        
-if (
-    r.status_code in (429, 500, 502, 503, 504)
-    or r.status_code == 404
-    or (
-        r.status_code == 400
-        and "not found" in r.text.lower()
-    )
-):
-    alt = _pick_gemini_model(key, exclude=model)
-    if alt:
-        print(
-            f"   Gemini HTTP {r.status_code}: "
-            f"switching from {model} to {alt}"
-        )
-        _GEMINI_MODEL["m"] = alt
-        model = alt
-        r = call(alt)
+        if (
+            r.status_code in (429, 500, 502, 503, 504)
+            or r.status_code == 404
+            or (r.status_code == 400 and "not found" in r.text.lower())
+        ):
+            alt = _pick_gemini_model(key, exclude=model)
+            if alt:
+                print(
+                    f"   Gemini HTTP {r.status_code}: "
+                    f"switching from {model} to {alt}"
+                )
+                _GEMINI_MODEL["m"] = alt
+                r = call(alt)
         if r.status_code != 200:
             raise requests.HTTPError(f"Gemini HTTP {r.status_code}: {r.text[:300]}")
         raw = r.json()["candidates"][0]["content"]["parts"][0]["text"]
@@ -233,8 +228,6 @@ if (
         sys.exit("ai_provider لازم يكون gemini أو anthropic")
 
     data = _extract_json(raw)
-         
-         
     return data["text"].strip(), data["caption"].strip()
 
 
