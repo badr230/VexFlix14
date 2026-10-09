@@ -1,0 +1,76 @@
+name: Facebook Posts
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "اختَر التجربة أو جدولة منشورات حقيقية"
+        required: true
+        type: choice
+        options:
+          - dry-run
+          - schedule
+        default: dry-run
+
+permissions:
+  contents: read
+
+concurrency:
+  group: facebook-posts
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+      FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+      FB_GRAPH_VERSION: ${{ vars.FB_GRAPH_VERSION }}
+      PYTHONUTF8: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-core
+
+      - name: Install Python dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+
+      - name: Validate configuration and secrets
+        shell: bash
+        run: |
+          python -m json.tool config.json >/dev/null
+          test -n "$GEMINI_API_KEY" || (echo "Missing repository secret GEMINI_API_KEY" && exit 1)
+          if [ "${{ inputs.mode }}" = "schedule" ]; then
+            test -n "$FB_PAGE_ID" || (echo "Missing repository secret FB_PAGE_ID" && exit 1)
+            test -n "$FB_PAGE_TOKEN" || (echo "Missing repository secret FB_PAGE_TOKEN" && exit 1)
+          fi
+
+      - name: Run safe dry run
+        if: ${{ inputs.mode == 'dry-run' }}
+        run: python main.py --dry-run
+
+      - name: Generate and schedule Facebook posts
+        if: ${{ inputs.mode == 'schedule' }}
+        run: python main.py --yes
+
+      - name: Upload generated previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: facebook-post-previews
+          path: output/
+          if-no-files-found: ignore
+          retention-days: 7

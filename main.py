@@ -31,7 +31,8 @@ from bidi.algorithm import get_display
 BASE = Path(__file__).parent
 OUT = BASE / "output"
 HISTORY_FILE = BASE / "posted.json"
-GRAPH = "https://graph.facebook.com/v21.0"
+GRAPH_VERSION = os.environ.get("FB_GRAPH_VERSION", "v24.0").strip() or "v24.0"
+GRAPH = f"https://graph.facebook.com/{GRAPH_VERSION}"
 REEL_SIZE = (1080, 1920)
 
 
@@ -67,7 +68,16 @@ def write_env_file(d):
 
 
 def load_config():
-    return json.loads((BASE / "config.json").read_text(encoding="utf-8"))
+    path = BASE / "config.json"
+    try:
+        cfg = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"تعذر قراءة config.json: {exc}")
+    required = ("page_name", "themes", "image", "schedule", "daily_plan")
+    missing = [key for key in required if key not in cfg]
+    if missing:
+        raise SystemExit("config.json ينقصه: " + ", ".join(missing))
+    return cfg
 
 
 def load_history():
@@ -438,6 +448,8 @@ def make_video(cfg, text, path, theme="", fps=24):
         y += line_h
 
     step, fade, lead, hold = 0.32, 0.45, 0.6, 2.8
+    if not words:
+        raise ValueError("لا يوجد نص صالح لإنشاء الفيديو")
     starts = [lead + i * step for i in range(len(words))]
     duration = starts[-1] + fade + hold
     n_frames = int(duration * fps)
@@ -486,9 +498,20 @@ def _sched(data, publish_ts):
 
 
 def _fail(r):
-    if r.status_code != 200:
-        raise RuntimeError(f"فيسبوك رفض الطلب: {r.text}")
-    return r.json()
+    try:
+        payload = r.json()
+    except ValueError:
+        payload = {"raw": r.text[:1000]}
+    if not r.ok or (isinstance(payload, dict) and "error" in payload):
+        error = payload.get("error", payload) if isinstance(payload, dict) else payload
+        if isinstance(error, dict):
+            message = error.get("message", str(error))
+            code = error.get("code")
+            subcode = error.get("error_subcode")
+            details = f" (code={code}, subcode={subcode})" if code is not None else ""
+            raise RuntimeError(f"فيسبوك رفض الطلب: {message}{details}")
+        raise RuntimeError(f"فيسبوك رفض الطلب: {error}")
+    return payload
 
 
 def post_photo(path, caption, publish_ts=None):
@@ -800,7 +823,14 @@ def setup_wizard():
     print("\nPages you manage / الصفحات:")
     for i, p in enumerate(pages, 1):
         print(f"  {i}) {p['name']}  ({p['id']})")
-    idx = int(ask("Choose page number / اختار رقم صفحتك", "1")) - 1
+    while True:
+        try:
+            idx = int(ask("Choose page number / اختار رقم صفحتك", "1")) - 1
+            if 0 <= idx < len(pages):
+                break
+        except ValueError:
+            pass
+        print(f"اكتب رقمًا من 1 إلى {len(pages)}.")
     page = pages[idx]
 
     env["FB_PAGE_ID"] = page["id"]
@@ -822,6 +852,7 @@ def main():
     ap.add_argument("--kind", choices=["image", "reel", "text"], help="نوع البوست مع --now")
     ap.add_argument("--monitor", action="store_true", help="تابع التفاعل: اخفي العادي وأظهر الفيرال")
     ap.add_argument("--loop", action="store_true", help="مع --monitor: كرر المتابعة كل شوية")
+    ap.add_argument("--version", action="version", version=f"fb-posts 1.1 (Meta Graph API {GRAPH_VERSION})")
     args = ap.parse_args()
 
     try:

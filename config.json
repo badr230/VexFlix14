@@ -1,6 +1,6 @@
 {
-  "page_name": "قومي",
-  "watermark_text": "قومي  |  facebook.com/QoumyOfficial",
+  "page_name": "اسم صفحتك هنا",
+  "watermark_text": "اسم صفحتك  |  facebook.com/صفحتك",
   "watermark_opacity": 150,
   "dialect": "اللهجة المصرية العامية (بسيطة وقريبة من القلب)",
   "themes": [
@@ -55,17 +55,13 @@
     ]
   },
   "schedule": {
-    "posts_per_day": 8,
-    "days_ahead": 3,
+    "posts_per_day": 4,
+    "days_ahead": 1,
     "times": [
-      "07:00",
       "09:00",
-      "11:00",
       "13:00",
-      "15:30",
       "18:00",
-      "20:30",
-      "22:30"
+      "21:00"
     ],
     "timezone_offset_hours": 3
   },
@@ -77,9 +73,9 @@
     "ساعة الإجابة يوم الجمعة"
   ],
   "daily_plan": {
-    "reel": 3,
-    "image": 3,
-    "text": 2
+    "reel": 1,
+    "image": 2,
+    "text": 1
   },
   "ai_delay_seconds": 4,
   "visibility": {

@@ -11,10 +11,10 @@
 4. من القايمة اختار **1** (تجربة من غير نشر)، وبعدها **2** (جدولة).
 5. سيب نافذة **3** (المتابعة) شغالة لو عايز الإخفاء والإظهار.
 
-عdevelopers.facebook.comلى ماك/لينكس: `pip install -r requirements.txt` وسطّب ffmpeg، وبعدها `python main.py --setup`.
+على ماك/لينكس: `pip install -r requirements.txt` وسطّب ffmpeg، وبعدها `python main.py --setup`.
 
 ### إزاي تجيب App ID و Token (مرة واحدة)
-1. ادخل  واعمل تطبيق نوع Business.
+1. ادخل developers.facebook.com واعمل تطبيق نوع Business.
 2. من Graph API Explorer اختار تطبيقك واطلب الصلاحيات: `pages_show_list` و `pages_read_engagement` و `pages_manage_posts`، واختار صفحتك، واضغط Generate Access Token.
 3. الـ App ID والـ App Secret هتلاقيهم في Settings ← Basic. المعالج هو اللي بيطلب منك الباقي.
 
@@ -50,3 +50,28 @@
 - **الريلز والإخفاء اتجرّبوا بمحاكاة الطلبات مش على فيسبوك الحقيقي.** جرّب الأول ريلز واحد: `python main.py --now --kind reel`.
 - حد الطلبات في Gemini المجاني ممكن يبطّأ التوليد. البرنامج بيستنى ويعيد المحاولة لوحده.
 - `posted.json` بيسجل اللي اتنشر ودرجاته، متمسحوش. و`.env` فيه مفاتيح صفحتك، متشاركوش مع حد.
+
+## التشغيل على GitHub Actions
+
+يمكنك تشغيل التجربة أو الجدولة من GitHub دون إبقاء حاسوبك مفتوحًا:
+
+1. ارفع محتويات هذا المجلد إلى مستودع GitHub جديد (Repository).
+2. افتح `Settings > Secrets and variables > Actions` ثم أضف Repository secrets التالية:
+   - `GEMINI_API_KEY`: مفتاح Gemini من Google AI Studio.
+   - `FB_PAGE_ID`: رقم صفحة فيسبوك.
+   - `FB_PAGE_TOKEN`: Page Access Token للصفحة، بصلاحية النشر.
+3. (اختياري) أضف Repository variable باسم `FB_GRAPH_VERSION` وضع فيه إصدار Graph API المتاح لتطبيقك؛ الافتراضي `v24.0` ويمكن تغييره دون تعديل الكود.
+4. افتح تبويب `Actions` ثم `Facebook Posts` واضغط `Run workflow`.
+5. ابدأ بـ `dry-run` لمعاينة الملفات دون نشر. بعد التأكد من الإعدادات، اختر `schedule` لجدولة منشورات حقيقية.
+
+**الأمان:** لا ترفع `.env` أو أي Access Token أو App Secret إلى GitHub. ملف `.gitignore` يستثني الأسرار والمخرجات وسجل النشر. لا تشغّل `schedule` مرارًا؛ كل تشغيل ينشئ دفعة جديدة من المنشورات المجدولة.
+
+**مهم:** هذا Workflow يعمل عند تشغيله يدويًا فقط، ولا ينشر تلقائيًا كل يوم من تلقاء نفسه. جدولة منشورات فيسبوك بعد نجاح الطلب تتم على خوادم Meta، لكن وقت النشر يجب أن يكون في المستقبل حسب المنطقة الزمنية المضبوطة في `config.json`. اختبر النشر أولًا على صفحة تملك صلاحية إدارتها، وتحقق من متطلبات Meta الحالية وصلاحيات التطبيق.
+
+### الاختبارات محليًا
+
+```bash
+python -m pip install -r requirements.txt
+python -m unittest discover -s tests -v
+python main.py --version
+```
