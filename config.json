@@ -1,0 +1,92 @@
+{
+  "page_name": "اسم صفحتك هنا",
+  "watermark_text": "اسم صفحتك  |  facebook.com/صفحتك",
+  "watermark_opacity": 150,
+  "dialect": "اللهجة المصرية العامية (بسيطة وقريبة من القلب)",
+  "themes": [
+    "أذكار الصباح والمساء",
+    "دعاء للوالدين",
+    "فضل الصلاة على النبي ﷺ",
+    "الصبر والرضا بقضاء الله",
+    "الاستغفار وفضله",
+    "التوكل على الله",
+    "حسن الظن بالله",
+    "دعاء الكرب والهم",
+    "فضل يوم الجمعة"
+  ],
+  "ai_provider": "gemini",
+  "gemini_model": "gemini-3.8-flash",
+  "anthropic_model": "claude-haiku-4-5",
+  "image": {
+    "width": 1080,
+    "height": 1350,
+    "font_path": "fonts/Cairo-Bold.ttf",
+    "backgrounds": [
+      [
+        "#0b3b36",
+        "#14705c",
+        "#d9b45f"
+      ],
+      [
+        "#14214a",
+        "#2f4f9c",
+        "#e0c37a"
+      ],
+      [
+        "#3a1747",
+        "#6b3a85",
+        "#e6c27a"
+      ],
+      [
+        "#1d1d24",
+        "#3b3d4d",
+        "#d4af37"
+      ],
+      [
+        "#4a2a0f",
+        "#8a5a2a",
+        "#f0d28a"
+      ],
+      [
+        "#0e2f4a",
+        "#1f6b8c",
+        "#e8cf8e"
+      ]
+    ]
+  },
+  "schedule": {
+    "posts_per_day": 8,
+    "days_ahead": 3,
+    "times": [
+      "07:00",
+      "09:00",
+      "11:00",
+      "13:00",
+      "15:30",
+      "18:00",
+      "20:30",
+      "22:30"
+    ],
+    "timezone_offset_hours": 3
+  },
+  "friday_themes": [
+    "فضل يوم الجمعة",
+    "الصلاة على النبي ﷺ يوم الجمعة",
+    "دعاء يوم الجمعة",
+    "سورة الكهف وفضلها",
+    "ساعة الإجابة يوم الجمعة"
+  ],
+  "daily_plan": {
+    "reel": 3,
+    "image": 3,
+    "text": 2
+  },
+  "ai_delay_seconds": 4,
+  "visibility": {
+    "enabled": true,
+    "hide_after_hours": 6,
+    "viral_score": 300,
+    "watch_days": 7,
+    "check_every_minutes": 30
+  }
+}
