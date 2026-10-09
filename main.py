@@ -129,26 +129,43 @@ def _extract_json(raw):
 _GEMINI_MODEL = {}
 
 
-def _pick_gemini_model(key):
-    """بيسأل جوجل عن الموديلات المتاحة ويختار أحدث flash عادي."""
+
+def _pick_gemini_model(key, exclude=None):
+    """اختيار موديل Flash متاح، مع إمكانية استبعاد موديل فشل."""
     try:
-        r = requests.get("https://generativelanguage.googleapis.com/v1beta/models",
-                         headers={"x-goog-api-key": key}, params={"pageSize": 200}, timeout=60)
+        r = requests.get(
+            "https://generativelanguage.googleapis.com/v1beta/models",
+            headers={"x-goog-api-key": key},
+            params={"pageSize": 200},
+            timeout=30,
+        )
         if r.status_code != 200:
+            print(f"تعذر جلب قائمة موديلات Gemini: HTTP {r.status_code}")
             return None
-        best, best_v = None, (-1, -1.0)
+
+        candidates = []
         for m in r.json().get("models", []):
             name = m.get("name", "").replace("models/", "")
-            if not re.fullmatch(r"gemini-(\d+(?:\.\d+)?)-flash(-preview[\w-]*)?", name):
+            match = re.fullmatch(
+                r"gemini-(\d+(?:\.\d+)?)-flash(-preview[\w-]*)?",
+                name,
+            )
+            if not match or name == exclude:
                 continue
-            if "generateContent" not in m.get("supportedGenerationMethods", []):
+            if "generateContent" not in m.get(
+                "supportedGenerationMethods", []
+            ):
                 continue
-            ver = float(re.match(r"gemini-(\d+(?:\.\d+)?)", name).group(1))
-            v = (0 if "preview" in name else 1, ver)
-            if v > best_v:
-                best, best_v = name, v
-        return best
-    except Exception:
+
+            version = float(match.group(1))
+            is_stable = "preview" not in name
+            candidates.append((is_stable, version, name))
+
+        candidates.sort(reverse=True)
+        return candidates[0][2] if candidates else None
+
+    except Exception as e:
+        print(f"تعذر اكتشاف موديل بديل: {e}")
         return None
 
 
@@ -177,12 +194,24 @@ def _generate_once(cfg, theme, recent, kind="image"):
 
         model = _GEMINI_MODEL.get("m") or cfg["gemini_model"]
         r = call(model)
-        if r.status_code == 404 or (r.status_code == 400 and "not found" in r.text.lower()):
-            alt = _pick_gemini_model(key)
-            if alt and alt != model:
-                print(f"   Model {model} not available, switching to {alt}")
-                _GEMINI_MODEL["m"] = alt
-                r = call(alt)
+        
+if (
+    r.status_code in (429, 500, 502, 503, 504)
+    or r.status_code == 404
+    or (
+        r.status_code == 400
+        and "not found" in r.text.lower()
+    )
+):
+    alt = _pick_gemini_model(key, exclude=model)
+    if alt:
+        print(
+            f"   Gemini HTTP {r.status_code}: "
+            f"switching from {model} to {alt}"
+        )
+        _GEMINI_MODEL["m"] = alt
+        model = alt
+        r = call(alt)
         if r.status_code != 200:
             raise requests.HTTPError(f"Gemini HTTP {r.status_code}: {r.text[:300]}")
         raw = r.json()["candidates"][0]["content"]["parts"][0]["text"]
@@ -204,7 +233,9 @@ def _generate_once(cfg, theme, recent, kind="image"):
         sys.exit("ai_provider لازم يكون gemini أو anthropic")
 
     data = _extract_json(raw)
-    return data["text"].strip(), data["caption"].strip()
+         
+         
+     return data["text"].strip(), data["caption"].strip()
 
 
 def generate_text(cfg, theme, recent, kind="image"):
