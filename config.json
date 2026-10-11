@@ -1,6 +1,6 @@
 {
-  "page_name": "ملخصات الانمي متنوعة",
-  "watermark_text": "ملخصات الانمي متنوعة  |  https://www.facebook.com/profile.php?id=61576313620310",
+  "page_name": "اسم صفحتك هنا",
+  "watermark_text": "اسم صفحتك  |  facebook.com/صفحتك",
   "watermark_opacity": 150,
   "dialect": "اللهجة المصرية العامية (بسيطة وقريبة من القلب)",
   "themes": [
@@ -55,13 +55,17 @@
     ]
   },
   "schedule": {
-    "posts_per_day": 4,
-    "days_ahead": 1,
+    "posts_per_day": 8,
+    "days_ahead": 3,
     "times": [
+      "07:00",
       "09:00",
+      "11:00",
       "13:00",
+      "15:30",
       "18:00",
-      "21:00"
+      "20:30",
+      "22:30"
     ],
     "timezone_offset_hours": 3
   },
@@ -73,9 +77,9 @@
     "ساعة الإجابة يوم الجمعة"
   ],
   "daily_plan": {
-    "reel": 1,
-    "image": 2,
-    "text": 1
+    "reel": 3,
+    "image": 3,
+    "text": 2
   },
   "ai_delay_seconds": 4,
   "visibility": {

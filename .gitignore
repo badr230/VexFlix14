@@ -1,8 +1,7 @@
 .env
 .venv/
-venv/
 __pycache__/
-*.py[cod]
 output/
 posted.json
-.DS_Store
+instance/
+*.pyc

@@ -1,4 +1,6 @@
-requests
-Pillow
-arabic-reshaper
-python-bidi
+Flask>=3.0,<4
+requests>=2.31
+Pillow>=10
+arabic-reshaper>=3
+python-bidi>=0.4
+gunicorn>=22

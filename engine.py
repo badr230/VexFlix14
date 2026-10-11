@@ -31,8 +31,7 @@ from bidi.algorithm import get_display
 BASE = Path(__file__).parent
 OUT = BASE / "output"
 HISTORY_FILE = BASE / "posted.json"
-GRAPH_VERSION = os.environ.get("FB_GRAPH_VERSION", "v24.0").strip() or "v24.0"
-GRAPH = f"https://graph.facebook.com/{GRAPH_VERSION}"
+GRAPH = "https://graph.facebook.com/v21.0"
 REEL_SIZE = (1080, 1920)
 
 
@@ -68,16 +67,7 @@ def write_env_file(d):
 
 
 def load_config():
-    path = BASE / "config.json"
-    try:
-        cfg = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise SystemExit(f"تعذر قراءة config.json: {exc}")
-    required = ("page_name", "themes", "image", "schedule", "daily_plan")
-    missing = [key for key in required if key not in cfg]
-    if missing:
-        raise SystemExit("config.json ينقصه: " + ", ".join(missing))
-    return cfg
+    return json.loads((BASE / "config.json").read_text(encoding="utf-8"))
 
 
 def load_history():
@@ -129,43 +119,26 @@ def _extract_json(raw):
 _GEMINI_MODEL = {}
 
 
-
-def _pick_gemini_model(key, exclude=None):
-    """اختيار موديل Flash متاح، مع إمكانية استبعاد موديل فشل."""
+def _pick_gemini_model(key):
+    """بيسأل جوجل عن الموديلات المتاحة ويختار أحدث flash عادي."""
     try:
-        r = requests.get(
-            "https://generativelanguage.googleapis.com/v1beta/models",
-            headers={"x-goog-api-key": key},
-            params={"pageSize": 200},
-            timeout=30,
-        )
+        r = requests.get("https://generativelanguage.googleapis.com/v1beta/models",
+                         headers={"x-goog-api-key": key}, params={"pageSize": 200}, timeout=60)
         if r.status_code != 200:
-            print(f"تعذر جلب قائمة موديلات Gemini: HTTP {r.status_code}")
             return None
-
-        candidates = []
+        best, best_v = None, (-1, -1.0)
         for m in r.json().get("models", []):
             name = m.get("name", "").replace("models/", "")
-            match = re.fullmatch(
-                r"gemini-(\d+(?:\.\d+)?)-flash(-preview[\w-]*)?",
-                name,
-            )
-            if not match or name == exclude:
+            if not re.fullmatch(r"gemini-(\d+(?:\.\d+)?)-flash(-preview[\w-]*)?", name):
                 continue
-            if "generateContent" not in m.get(
-                "supportedGenerationMethods", []
-            ):
+            if "generateContent" not in m.get("supportedGenerationMethods", []):
                 continue
-
-            version = float(match.group(1))
-            is_stable = "preview" not in name
-            candidates.append((is_stable, version, name))
-
-        candidates.sort(reverse=True)
-        return candidates[0][2] if candidates else None
-
-    except Exception as e:
-        print(f"تعذر اكتشاف موديل بديل: {e}")
+            ver = float(re.match(r"gemini-(\d+(?:\.\d+)?)", name).group(1))
+            v = (0 if "preview" in name else 1, ver)
+            if v > best_v:
+                best, best_v = name, v
+        return best
+    except Exception:
         return None
 
 
@@ -194,17 +167,10 @@ def _generate_once(cfg, theme, recent, kind="image"):
 
         model = _GEMINI_MODEL.get("m") or cfg["gemini_model"]
         r = call(model)
-        if (
-            r.status_code in (429, 500, 502, 503, 504)
-            or r.status_code == 404
-            or (r.status_code == 400 and "not found" in r.text.lower())
-        ):
-            alt = _pick_gemini_model(key, exclude=model)
-            if alt:
-                print(
-                    f"   Gemini HTTP {r.status_code}: "
-                    f"switching from {model} to {alt}"
-                )
+        if r.status_code == 404 or (r.status_code == 400 and "not found" in r.text.lower()):
+            alt = _pick_gemini_model(key)
+            if alt and alt != model:
+                print(f"   Model {model} not available, switching to {alt}")
                 _GEMINI_MODEL["m"] = alt
                 r = call(alt)
         if r.status_code != 200:
@@ -472,8 +438,6 @@ def make_video(cfg, text, path, theme="", fps=24):
         y += line_h
 
     step, fade, lead, hold = 0.32, 0.45, 0.6, 2.8
-    if not words:
-        raise ValueError("لا يوجد نص صالح لإنشاء الفيديو")
     starts = [lead + i * step for i in range(len(words))]
     duration = starts[-1] + fade + hold
     n_frames = int(duration * fps)
@@ -522,20 +486,9 @@ def _sched(data, publish_ts):
 
 
 def _fail(r):
-    try:
-        payload = r.json()
-    except ValueError:
-        payload = {"raw": r.text[:1000]}
-    if not r.ok or (isinstance(payload, dict) and "error" in payload):
-        error = payload.get("error", payload) if isinstance(payload, dict) else payload
-        if isinstance(error, dict):
-            message = error.get("message", str(error))
-            code = error.get("code")
-            subcode = error.get("error_subcode")
-            details = f" (code={code}, subcode={subcode})" if code is not None else ""
-            raise RuntimeError(f"فيسبوك رفض الطلب: {message}{details}")
-        raise RuntimeError(f"فيسبوك رفض الطلب: {error}")
-    return payload
+    if r.status_code != 200:
+        raise RuntimeError(f"فيسبوك رفض الطلب: {r.text}")
+    return r.json()
 
 
 def post_photo(path, caption, publish_ts=None):
@@ -847,14 +800,7 @@ def setup_wizard():
     print("\nPages you manage / الصفحات:")
     for i, p in enumerate(pages, 1):
         print(f"  {i}) {p['name']}  ({p['id']})")
-    while True:
-        try:
-            idx = int(ask("Choose page number / اختار رقم صفحتك", "1")) - 1
-            if 0 <= idx < len(pages):
-                break
-        except ValueError:
-            pass
-        print(f"اكتب رقمًا من 1 إلى {len(pages)}.")
+    idx = int(ask("Choose page number / اختار رقم صفحتك", "1")) - 1
     page = pages[idx]
 
     env["FB_PAGE_ID"] = page["id"]
@@ -876,7 +822,6 @@ def main():
     ap.add_argument("--kind", choices=["image", "reel", "text"], help="نوع البوست مع --now")
     ap.add_argument("--monitor", action="store_true", help="تابع التفاعل: اخفي العادي وأظهر الفيرال")
     ap.add_argument("--loop", action="store_true", help="مع --monitor: كرر المتابعة كل شوية")
-    ap.add_argument("--version", action="version", version=f"fb-posts 1.1 (Meta Graph API {GRAPH_VERSION})")
     args = ap.parse_args()
 
     try:
